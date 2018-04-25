@@ -1,0 +1,2 @@
+g++ -std=c++11 database.cpp -c -g amazon.pb.cc -lpqxx -lpq `pkg-config --cflags --libs protobuf`
+Makefile:14: recipe for target 'database.o' failed

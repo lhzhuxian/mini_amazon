@@ -1,0 +1,50 @@
+message AWarehouse{
+ required int32 wid = 1; 
+ required int32 x = 2;
+ required int32 y = 3;
+}
+
+
+message	UConnectA{
+   required int64 worldid = 1;
+}
+
+message	AConnectU{
+  repeated AWarehouse initwh = 1;
+  optional string error = 2;
+}
+
+
+
+message AGoodInfo{
+ required int32 whid = 1;
+ optional string username = 2;    //Ups username
+ required int32 xdest = 3;
+ required int32 ydest = 4;
+ required int64 order_num = 5; // make sure the order is unique
+ repeated AProduct good = 6;
+}
+
+message UTruckMatch{
+ required int32 truckid = 1;
+ required int64 goodid = 2;
+ required int64 order_num = 3;
+}
+
+message UTruckInfo{
+ required int32 truckid = 1;
+ required int32 whid = 2;
+}
+
+message A2UResponses {
+ repeated AGoodInfo goodReady = 1;
+ repeated UTruckInfo truckLeave = 2;
+ optional string error = 3;
+}
+
+message U2AResponses{
+ repeated UTruckInfo truckArrived = 1;
+ repeated int64 packageFinished  = 2;    //package id
+ repeated UTruckMatch truckReady = 3;
+ optional string error = 4;
+}
