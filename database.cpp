@@ -18,10 +18,11 @@ result database::run_query(string &sql) {
   result R(N.exec(sql));
   return R;
 }
-void database::run_command(string &sql) {
+result database::run_command(string &sql) {
     work W(*c);
-    W.exec(sql);
+    result R(W.exec(sql));
     W.commit();
+    return R;
 }
 
 void database::add_buy_command(ACommands &WarehouseRequest, int whnum, int id, string &description, int count){
@@ -141,49 +142,55 @@ void database::deal_stock_arrived ( A2UResponses &UpsRequest, int s_id, int s_wh
     }
     
   }
+  cout << "remain stock " << s_amount << endl;
+  string command =  "UPDATE STOCK "					\
+    "SET  AMOUNT = AMOUNT + " + to_string(s_amount) +  " WHERE id = " + to_string(s_id) + " AND WHID = " + to_string(s_whid) + ";";
   if (flag) {
     delete_order += ";";
-    run_command(delete_order);
+    sql += delete_order;
   }
-  cout << "remain stock " << s_amount << endl;
-  update_stock(s_id, s_whid, s_amount);
+  run_command(command);
+
 }
 
 // deal with truckReady response from UPS
 void database::deal_truckReady(int goodid, int truckid, int order_num, ACommands & WarehouseRequest) {
-  string sql =  "UPDATE AORDER "                                        \
-    "SET  TRUCKID = " + to_string(truckid) + " , GOODID = " + to_string(goodid) + " WHERE ordernum = " + to_string(order_num) + " ;";
-  run_command(sql);
-  string query = "SELECT WHID, ID, DESCRIPTION, AMOUNT FROM UORDER WHERE ordernum = "  + to_string(order_num) + " ;";
+ 
+  string query = "SELECT WHID, ID, DESCRIPTION, AMOUNT FROM AORDER WHERE ordernum = "  + to_string(order_num) + " ;";
   result R = run_query(query);
 
   // send warehouse a pack command
   APack * PackCommand = WarehouseRequest.add_topack();
   PackCommand->set_whnum(R[0][0].as<int>());
+  PackCommand->set_shipid(goodid); 
   AProduct * thing = PackCommand->add_things();
   thing->set_id(R[0][1].as<int>());
   thing->set_description(R[0][2].as<string>());
   thing->set_count(R[0][3].as<int>());
+  string sql =  "UPDATE AORDER "                                        \
+    "SET  TRUCKID = " + to_string(truckid) + " , GOODID = " + to_string(goodid) + " WHERE ordernum =\
+ " + to_string(order_num) + " ;";
+  run_command(sql);
 
 }
 
 // deal with ready response from warehouse
 void database::deal_pack_ready(int goodid, ACommands & WarehouseRequest) {
-  string sql =  "UPDATE AORDER "                                        \
-    "SET  PACK_READY = TRUE WHERE GOODID = " + to_string(goodid) + " ;";
-  run_command(sql);
+ 
   string query = "SELECT TRUCK_READY, WHID, TRUCKID FROM AORDER WHERE GOODID = " + to_string(goodid) + ";";
   result R = run_query(query);
   if (R[0][0].as<bool>()) {
     add_load_command(WarehouseRequest, R[0][1].as<int>(),R[0][2].as<int>(), goodid);    
   }
+  string sql =  "UPDATE AORDER "                                        \
+    "SET  PACK_READY = TRUE WHERE GOODID = " + to_string(goodid) + " ;";
+  run_command(sql);
+  
 }
 
 // deal with truckArrived response from UPS
 void database::deal_truckArrived(int truckid, int whid, ACommands & WarehouseRequest) {
-  string sql =  "UPDATE AORDER "                                        \
-    "SET  TRUCK_READY = TRUE WHERE TRUCKID = " + to_string(truckid) + " AND WHID = " + to_string(whid) + " ;";
-  run_command(sql);
+ 
   string query  = "SELECT PACK_READY, GOODID FROM AORDER WHERE TRUCKID = " + to_string(truckid) + " AND WHID = " + to_string(whid) + ";";
   result R = run_query(query);
   for (auto it = R.begin(); it != R.end(); it++) {
@@ -191,14 +198,18 @@ void database::deal_truckArrived(int truckid, int whid, ACommands & WarehouseReq
       add_load_command(WarehouseRequest, whid, truckid, it[1].as<int>());
     }
   }
+  string sql =  "UPDATE AORDER "                                        \
+     "SET  TRUCK_READY = TRUE WHERE TRUCKID = " + to_string(truckid) + " AND WHID = " + to_string(whid) + " ;";
+ run_command(sql);
   
 }
 
 // deal with load response from warehouse
 void database::deal_loaded(int goodid, A2UResponses &UpsRequest) {
   string sql =  "UPDATE AORDER "                                        \
-    "SET  LOAD_READY = TRUE WHERE GOODID = " + to_string(goodid) + " ;";
+     "SET  LOAD_READY = TRUE WHERE GOODID = " + to_string(goodid) + " ;";
   run_command(sql);
+  
   string tmp1 = "SELECT TRUCKID, WHID FROM AORDER WHERE GOODID = " + to_string(goodid) + " ;";
   result tmp2 = run_query(tmp1);
   int truckid = tmp2[0][0].as<int>();

@@ -14,7 +14,7 @@ public:
   database(int wout, int uout);
   ~database();
   result run_query(string &sql);
-  void run_command(string &sql);
+  result run_command(string &sql);
   void add_buy_command(ACommands &WarehouseRequest, int whnum, int id, string &description, int count);
   void add_load_command(ACommands &WarehouseRequest, int whnum, int truckid, int shipid);
   void add_goodReady_command(A2UResponses &UpsRequest, int whid, string username,\
