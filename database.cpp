@@ -147,7 +147,7 @@ void database::deal_stock_arrived ( A2UResponses &UpsRequest, int s_id, int s_wh
     "SET  AMOUNT = AMOUNT + " + to_string(s_amount) +  " WHERE id = " + to_string(s_id) + " AND WHID = " + to_string(s_whid) + ";";
   if (flag) {
     delete_order += ";";
-    sql += delete_order;
+    command += delete_order;
   }
   run_command(command);
 
@@ -191,15 +191,16 @@ void database::deal_pack_ready(int goodid, ACommands & WarehouseRequest) {
 // deal with truckArrived response from UPS
 void database::deal_truckArrived(int truckid, int whid, ACommands & WarehouseRequest) {
  
-  string query  = "SELECT PACK_READY, GOODID FROM AORDER WHERE TRUCKID = " + to_string(truckid) + " AND WHID = " + to_string(whid) + ";";
+  string query  = "SELECT PACK_READY, GOODID FROM AORDER WHERE DELIVERED = FALSE AND TRUCKID = " + to_string(truckid) + " AND WHID = " + to_string(whid) + ";";
   result R = run_query(query);
+
   for (auto it = R.begin(); it != R.end(); it++) {
     if (it[0].as<bool>()) {
       add_load_command(WarehouseRequest, whid, truckid, it[1].as<int>());
     }
   }
   string sql =  "UPDATE AORDER "                                        \
-     "SET  TRUCK_READY = TRUE WHERE TRUCKID = " + to_string(truckid) + " AND WHID = " + to_string(whid) + " ;";
+     "SET  TRUCK_READY = TRUE WHERE DELIVERED = FALSE AND TRUCKID = " + to_string(truckid) + " AND WHID = " + to_string(whid) + " ;";
  run_command(sql);
   
 }
@@ -214,7 +215,7 @@ void database::deal_loaded(int goodid, A2UResponses &UpsRequest) {
   result tmp2 = run_query(tmp1);
   int truckid = tmp2[0][0].as<int>();
   int whid = tmp2[0][1].as<int>();
-  string query = "SELECT * FROM AORDER WHERE TRUCKID = " + to_string(truckid) \
+  string query = "SELECT * FROM AORDER WHERE DELIVERED = FALSE AND TRUCKID = " + to_string(truckid) \
     + " AND WHID = " + to_string(whid) + " AND LOAD_READY = FALSE " + ";";
   result R = run_query(query);
   if (R.size() == 0) {

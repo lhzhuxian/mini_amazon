@@ -1,3 +1,0 @@
-delete from stock;
-INSERT INTO stock (id, whid, amount)
-VALUES (1, 0, 0);

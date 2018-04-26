@@ -3,6 +3,7 @@
 #include "database.hpp"
 #include "server.hpp"
 
+#define WHNUM 4
 #define SIMSPEED 10000000
 // ignore ups_out for test
 
@@ -61,12 +62,14 @@ void ups_task(U2AResponses UpsResponse, database * AmazonDB, socket_out * wh_out
     cout << "Order " << order_num << " has been matched to shipid " \
 	 << goodid << " and truck " << truckid << endl;
     AmazonDB->deal_truckReady(goodid, truckid, order_num, WarehouseRequest);
+    /*
     cout << "warehouseRequest topack " << WarehouseRequest.topack_size() << endl;
-    cout << "whnum " <<  WarehouseRequest.topack(0).whnum() << endl;
-    cout << "shipid " <<  WarehouseRequest.topack(0).shipid() << endl;
-    cout << "things " <<  WarehouseRequest.topack(0).things(0).id() << endl;
-    cout << "things " <<  WarehouseRequest.topack(0).things(0).description() << endl;
-    cout << "things " <<  WarehouseRequest.topack(0).things(0).count() << endl;
+    cout << "whnum " <<  WarehouseRequest.topack(j).whnum() << endl;
+    cout << "shipid " <<  WarehouseRequest.topack(j).shipid() << endl;
+    cout << "things " <<  WarehouseRequest.topack(j).things(0).id() << endl;
+    cout << "things " <<  WarehouseRequest.topack(j).things(0).description() << endl;
+    cout << "things " <<  WarehouseRequest.topack(j).things(0).count() << endl;
+    */
   }
 
   if (UpsResponse.has_error()) {
@@ -130,7 +133,7 @@ void wh_task(AResponses WarehouseResponse, database * AmazonDB, socket_out * wh_
   }
   
   if (!sendMesgTo<A2UResponses> (UpsRequest, ups_out) ) {
-     cerr << "failed sending request to UPS when dealing with response from warehouse\n";
+    cerr << "failed sending request to UPS when dealing with response from warehouse\n";
   }
   
   
@@ -138,10 +141,11 @@ void wh_task(AResponses WarehouseResponse, database * AmazonDB, socket_out * wh_
 
 
 
+
 int main(void) {
 
   // waiting for UPS
-
+  srand (time(NULL));
   
   Server Amazon((char*)"6666");
   int u_sockfd = Amazon.to_accept();
@@ -157,16 +161,8 @@ int main(void) {
     cout << "failed to receive worldid from ups\n";
   }
   int worldid = UpsConnect.worldid();
-  AWarehouse * warehouse1 = AmaConnect.add_initwh();
-  
-  warehouse1->set_wid(0);
-  warehouse1->set_x(-664);
-  warehouse1->set_y(-1081);
-  
-  
- 
   // connect to sim_world
-  Client wh((char*)"vcm-905.vm.duke.edu", (char*)"23456");
+  Client wh((char*)"vcm-2468.vm.duke.edu", (char*)"23456");
   int result = wh.to_connect();
   if (result == -1) {
     perror("connect failed\n");
@@ -178,13 +174,20 @@ int main(void) {
   unique_ptr<socket_in> wh_in(new socket_in(w_sockfd));
 
   unique_ptr<database> AmazonDB (new database(w_sockfd, u_sockfd));
- 
-  ConnectRequest.set_worldid(worldid);
+
   // init warehouse
-  
-  AInitWarehouse * warehouse = ConnectRequest.add_initwh();
-  warehouse->set_x(-664);
-  warehouse->set_y(-1081);
+  ConnectRequest.set_worldid(worldid);
+  for (int i = 0;i < WHNUM; i++) {
+    AInitWarehouse * warehouse = ConnectRequest.add_initwh();
+    int x = rand() % 2000 - 1000;
+    int y = rand() % 2000 - 1000;
+    warehouse->set_x(x);
+    warehouse->set_y(y);
+    AWarehouse * warehouse1 = AmaConnect.add_initwh();
+    warehouse1->set_wid(i);
+    warehouse1->set_x(x);
+    warehouse1->set_y(y);
+  }
   
   if (!sendMesgTo<AConnect> (ConnectRequest, wh_out.get()) ) {
     cerr << "failed to connect to warehouse\n";
